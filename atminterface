@@ -1,0 +1,94 @@
+import java.sql.*;
+import java.util.Scanner;
+
+public class ATMInterface {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        // Database connection parameters
+        String url = "jdbc:mysql://localhost:3306/atm_db";
+        String username = "root";
+        String password = "";
+
+        try {
+            // Establish database connection
+            Connection connection = DriverManager.getConnection(url, username, password);
+            Statement statement = connection.createStatement();
+
+            while (true) {
+                System.out.println("Welcome to the ATM!");
+                System.out.print("Do you have an account? (yes/no): ");
+                String hasAccount = scanner.next();
+
+                if (hasAccount.equalsIgnoreCase("yes")) {
+                    System.out.print("Enter your account number: ");
+                    long accountNumber = scanner.nextLong();
+                    System.out.print("Enter your PIN: ");
+                    int pin = scanner.nextInt();
+
+                    // Check account credentials
+                    ResultSet resultSet = statement.executeQuery("SELECT * FROM accounts WHERE account_number = " + accountNumber + " AND pin = " + pin);
+
+                    if (resultSet.next()) {
+                        int balance = resultSet.getInt("balance");
+                        System.out.println("Login successful. Your balance: $" + balance);
+
+                        // Perform transaction
+                        System.out.print("Enter 1 for deposit, 2 for withdrawal: ");
+                        int choice = scanner.nextInt();
+
+                        if (choice == 1) {
+                            System.out.print("Enter the amount to deposit: ");
+                            int depositAmount = scanner.nextInt();
+                            balance += depositAmount;
+                        } else if (choice == 2) {
+                            System.out.print("Enter the amount to withdraw: ");
+                            int withdrawAmount = scanner.nextInt();
+                            if (withdrawAmount <= balance) {
+                                balance -= withdrawAmount;
+                            } else {
+                                System.out.println("Insufficient balance.");
+                            }
+                        }
+
+                        // Update balance in the database
+                        statement.executeUpdate("UPDATE accounts SET balance = " + balance + " WHERE account_number = " + accountNumber);
+                        System.out.println("Transaction complete. Your updated balance: $" + balance);
+                    } else {
+                        System.out.println("Invalid account number or PIN. Please try again.");
+                    }
+
+                    resultSet.close(); // Close the ResultSet after each iteration
+                } else if (hasAccount.equalsIgnoreCase("no")) {
+                    System.out.print("Enter a new account number: ");
+                    long newAccountNumber = scanner.nextLong();
+                    System.out.print("Enter a new PIN: ");
+                    int newPin = scanner.nextInt();
+                    System.out.print("Enter initial balance: ");
+                    int initialBalance = scanner.nextInt();
+
+                    // Insert new account into the database
+                    statement.executeUpdate("INSERT INTO accounts (account_number, pin, balance) VALUES (" + newAccountNumber + ", " + newPin + ", " + initialBalance + ")");
+                    System.out.println("New account created successfully.");
+
+                } else {
+                    System.out.println("Invalid input. Please enter 'yes' or 'no'.");
+                }
+
+                System.out.print("Do you want to perform another transaction? (y/n): ");
+                String anotherTransaction = scanner.next();
+                if (!anotherTransaction.equalsIgnoreCase("y")) {
+                    System.out.println("Thank you for using the ATM!");
+                    break;
+                }
+            }
+
+            // Close connections
+            statement.close();
+            connection.close();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
